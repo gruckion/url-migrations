@@ -75,7 +75,7 @@ Every rule accepts an optional `matches(url)`. The rule runs only when it return
 - **Ordered.** Rules run top to bottom. List them oldest first, so one pass upgrades a URL that is several versions behind.
 - **No mutation.** The input is never changed. You get a new `URL` back, and the hash is kept.
 - **Idempotent, if you write it that way.** Running the migration on its own output should return `applied: false`. If it does not, a redirect can loop. Test this for each rule.
-- **Search params only.** Path changes are not migrated. Use your framework's redirect config for those.
+- **Search params only.** Path changes are not migrated. Use your framework's redirect config for those, and use the contract diff to find out when you need one.
 
 ## Test your rules
 
@@ -85,9 +85,49 @@ expect(result.url.search).toBe('?is_late=true');
 expect(migrateURL(result.url).applied).toBe(false); // no redirect loop
 ```
 
-## Not included
+## Detect breaking URL changes (experimental)
 
-This package migrates URLs. It does not tell you when a URL change needs a migration. Catching a breaking change anywhere in the URL structure, not only in search params, is a separate and harder problem. Pull requests and ideas are welcome.
+Migrations only help if you remember to write them. The CLI makes forgetting a CI failure.
+
+It reads your Next.js app router project and writes a **URL contract**: every route, the search params each route reads, and for each param its type and allowed values.
+
+```sh
+npx url-migrations extract --out url-contract.json
+```
+
+Commit the contract, then compare it against the one from your main branch in CI:
+
+```sh
+npx url-migrations diff base-contract.json url-contract.json
+```
+
+```text
+breaking /orders ?status  param "status" no longer accepts "LATE"
+safe     /orders ?is_late  param "is_late" was added
+```
+
+The exit code is 1 when a change breaks existing URLs: a removed route, a removed or retyped param, or a removed enum value. New routes, params and values are safe. A removed param that matches a new param of the same type is reported as a likely rename.
+
+### What it reads
+
+- [nuqs](https://nuqs.dev) hooks and schemas: `useQueryState`, `useQueryStates`, `createLoader`, `createSerializer`, `createSearchParamsCache`, including `urlKeys`, spread schemas, and enum values from const arrays, enums and `Object.values`.
+- `useSearchParams().get('key')` with a literal key (recorded as `untyped`).
+- Inline `searchParams` prop types on `page` files.
+
+A param belongs to a route only when that route's page or layouts actually reference the code that reads it. Importing a context hook from a provider file does not pull in the provider's params.
+
+### What it cannot see
+
+The scan marks a route `opaque` and prints a warning when it finds URL state it cannot list:
+
+- search params passed on whole (`Object.fromEntries(params)`, `params.toString()`) or read with a computed key
+- schemas built at runtime
+- hardcoded links that build query strings by hand
+- values inside a single param, such as a JSON filter tree
+
+Treat an `opaque` route as unchecked. The fix is to declare that state with a typed parser.
+
+Path-only changes inside a route's own dynamic segments are not diffed beyond the route pattern.
 
 ## Credit
 
