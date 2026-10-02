@@ -1,14 +1,15 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { checkMigrations, diffContracts, extractContract, type Contract, type Fixture, type Waiver } from './contract';
 import type { MigrationResult } from './index';
 
-const USAGE = `url-migrations <command>
+export const USAGE = `url-migrations <command>
 
-  extract [--root .] [--app app] [--tsconfig tsconfig.json] [--out url-contract.json] [--explain]
+  extract [--root .] [--app app] [--tsconfig tsconfig.json] [--out url-contract.json] [--explain] [--check]
       Scan an app router project and write its URL contract.
+      With --check, write nothing and exit 1 when the file at --out is missing or out of date.
 
   diff <base.json> <head.json>
       Compare two contracts. Exits 1 when the change breaks existing URLs.
@@ -59,36 +60,57 @@ async function loadMigrations(file: string): Promise<MigrationsModule> {
   return { migrate: (input) => migrate(input), fixtures, waivers: waivers ?? [] };
 }
 
-async function main(argv: string[]): Promise<number> {
+export interface RunResult {
+  code: number;
+  lines: string[];
+}
+
+export async function run(argv: string[]): Promise<RunResult> {
+  const lines: string[] = [];
+  const code = await execute(argv, (line) => lines.push(line));
+  return { code, lines };
+}
+
+async function execute(argv: string[], print: (line: string) => void): Promise<number> {
   const [command, ...rest] = argv;
   if (command === 'extract') {
     const f = flags(rest);
     const result = extractContract({ root: f.get('root') ?? '.', appDir: f.get('app'), tsconfig: f.get('tsconfig') });
     const out = f.get('out') ?? 'url-contract.json';
-    writeFileSync(out, `${JSON.stringify(result.contract, null, 2)}\n`);
+    const serialized = `${JSON.stringify(result.contract, null, 2)}\n`;
+    if (f.has('check')) {
+      const current = existsSync(out) ? readFileSync(out, 'utf8') : null;
+      if (current === serialized) {
+        print(`${out} is up to date`);
+        return 0;
+      }
+      print(`${out} is ${current === null ? 'missing' : 'out of date'}. Run extract and commit the result.`);
+      return 1;
+    }
+    writeFileSync(out, serialized);
     const paramCount = Object.values(result.contract.routes).reduce((n, r) => n + Object.keys(r.params).length, 0);
     const opaque = Object.values(result.contract.routes).filter((r) => r.opaque).length;
-    console.log(`${result.stats.pages} routes, ${paramCount} params, ${opaque} opaque routes -> ${out}`);
-    for (const w of result.warnings) console.warn(`warning ${w.file}:${w.line} ${w.message}`);
-    if (f.has('explain')) for (const o of result.origins) console.log(`${o.route} ${o.key} <- ${o.file}:${o.line}`);
+    print(`${result.stats.pages} routes, ${paramCount} params, ${opaque} opaque routes -> ${out}`);
+    for (const w of result.warnings) print(`warning ${w.file}:${w.line} ${w.message}`);
+    if (f.has('explain')) for (const o of result.origins) print(`${o.route} ${o.key} <- ${o.file}:${o.line}`);
     return 0;
   }
   if (command === 'diff') {
     const [basePath, headPath] = rest;
     if (!basePath || !headPath) {
-      console.error(USAGE);
+      print(USAGE);
       return 2;
     }
     const changes = diffContracts(loadContract(basePath), loadContract(headPath));
-    for (const c of changes) console.log(`${c.severity.padEnd(8)} ${c.route}${c.param ? ` ?${c.param}` : ''}  ${c.message}`);
-    if (!changes.length) console.log('no URL changes');
+    for (const c of changes) print(`${c.severity.padEnd(8)} ${c.route}${c.param ? ` ?${c.param}` : ''}  ${c.message}`);
+    if (!changes.length) print('no URL changes');
     return changes.some((c) => c.severity === 'breaking') ? 1 : 0;
   }
   if (command === 'check') {
     const [basePath, headPath, ...flagArgs] = rest;
     const migrationsPath = flags(flagArgs).get('migrations');
     if (!basePath || !headPath || !migrationsPath) {
-      console.error(USAGE);
+      print(USAGE);
       return 2;
     }
     const migrations = await loadMigrations(migrationsPath);
@@ -99,22 +121,12 @@ async function main(argv: string[]): Promise<number> {
       fixtures: migrations.fixtures,
       waivers: migrations.waivers,
     });
-    for (const c of result.covered) console.log(`covered  ${c.route}${c.param ? ` ?${c.param}` : ''}  ${c.message}`);
-    for (const c of result.waived) console.log(`waived   ${c.route}${c.param ? ` ?${c.param}` : ''}  ${c.message}`);
-    for (const p of result.problems) console.log(`problem  ${p.message}`);
-    if (result.ok) console.log('ok');
+    for (const c of result.covered) print(`covered  ${c.route}${c.param ? ` ?${c.param}` : ''}  ${c.message}`);
+    for (const c of result.waived) print(`waived   ${c.route}${c.param ? ` ?${c.param}` : ''}  ${c.message}`);
+    for (const p of result.problems) print(`problem  ${p.message}`);
+    if (result.ok) print('ok');
     return result.ok ? 0 : 1;
   }
-  console.error(USAGE);
+  print(USAGE);
   return command ? 2 : 0;
 }
-
-main(process.argv.slice(2)).then(
-  (code) => {
-    process.exitCode = code;
-  },
-  (error: unknown) => {
-    console.error(error instanceof Error ? error.message : error);
-    process.exitCode = 2;
-  }
-);

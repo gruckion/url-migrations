@@ -16,7 +16,7 @@ describe('extractContract', () => {
 
   it('follows imports from the page and its layouts', () => {
     const orders = result.contract.routes['/orders'];
-    expect(Object.keys(orders?.params ?? {})).toEqual(['from', 'p', 'ref', 'status', 'tab', 'team_ids']);
+    expect(Object.keys(orders?.params ?? {})).toEqual(['dir', 'from', 'p', 'ref', 'status', 'tab', 'team_ids']);
   });
 
   it('reads parsers, enum values through spreads, and array separators', () => {
@@ -26,10 +26,16 @@ describe('extractContract', () => {
     expect(params?.tab).toEqual({ kind: 'string' });
   });
 
-  it('uses the URL key from urlKeys, not the schema key', () => {
+  it('uses the URL key from urlKeys even when urlKeys is a variable from another file', () => {
     const params = result.contract.routes['/orders']?.params;
     expect(params?.p).toEqual({ kind: 'integer' });
     expect(params).not.toHaveProperty('page');
+  });
+
+  it('reads enum values from an enum declared in another file', () => {
+    const params = result.contract.routes['/orders']?.params;
+    expect(params?.dir).toEqual({ kind: 'enum', values: ['asc', 'desc'] });
+    expect(result.warnings.filter((w) => w.message.includes('could not be read'))).toEqual([]);
   });
 
   it('names custom parsers after the exported binding', () => {

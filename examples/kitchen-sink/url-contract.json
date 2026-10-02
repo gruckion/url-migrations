@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "routes": {
+    "/": {
+      "params": {
+        "theme": {
+          "kind": "enum",
+          "values": [
+            "dark",
+            "light"
+          ]
+        }
+      }
+    },
+    "/customers": {
+      "params": {
+        "status": {
+          "kind": "enum",
+          "values": [
+            "closed",
+            "open"
+          ]
+        },
+        "theme": {
+          "kind": "enum",
+          "values": [
+            "dark",
+            "light"
+          ]
+        }
+      }
+    },
+    "/export": {
+      "params": {
+        "theme": {
+          "kind": "enum",
+          "values": [
+            "dark",
+            "light"
+          ]
+        }
+      },
+      "opaque": true
+    },
+    "/orders": {
+      "params": {
+        "dir": {
+          "kind": "enum",
+          "values": [
+            "asc",
+            "desc"
+          ]
+        },
+        "from": {
+          "kind": "custom",
+          "name": "parseAsYmd"
+        },
+        "page": {
+          "kind": "integer"
+        },
+        "ps": {
+          "kind": "integer"
+        },
+        "selected": {
+          "kind": "string"
+        },
+        "sort": {
+          "kind": "enum",
+          "values": [
+            "created",
+            "total"
+          ]
+        },
+        "status": {
+          "kind": "enum",
+          "values": [
+            "open",
+            "paid",
+            "void"
+          ]
+        },
+        "team_ids": {
+          "kind": "array",
+          "item": {
+            "kind": "string"
+          },
+          "separator": ","
+        },
+        "theme": {
+          "kind": "enum",
+          "values": [
+            "dark",
+            "light"
+          ]
+        },
+        "to": {
+          "kind": "custom",
+          "name": "parseAsYmd"
+        }
+      }
+    },
+    "/orders/[id]": {
+      "params": {
+        "panel": {
+          "kind": "enum",
+          "values": [
+            "files",
+            "notes"
+          ]
+        },
+        "tab": {
+          "kind": "enum",
+          "values": [
+            "details",
+            "history"
+          ]
+        },
+        "theme": {
+          "kind": "enum",
+          "values": [
+            "dark",
+            "light"
+          ]
+        }
+      }
+    },
+    "/reports/[...slug]": {
+      "params": {
+        "range": {
+          "kind": "untyped"
+        },
+        "theme": {
+          "kind": "enum",
+          "values": [
+            "dark",
+            "light"
+          ]
+        }
+      }
+    },
+    "/settings": {
+      "params": {
+        "theme": {
+          "kind": "enum",
+          "values": [
+            "dark",
+            "light"
+          ]
+        }
+      }
+    }
+  }
+}

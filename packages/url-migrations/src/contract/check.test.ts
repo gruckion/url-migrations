@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createURLMigration } from '../index';
+import { createURLMigration, type URLMigration } from '../index';
 import { checkMigrations } from './check';
 import type { Contract } from './types';
 
@@ -24,7 +24,7 @@ const head: Contract = {
   },
 };
 
-const migrate = createURLMigration([
+const migrateRules: URLMigration[] = [
   {
     type: 'custom',
     matches: (url) => url.pathname === '/orders',
@@ -43,7 +43,9 @@ const migrate = createURLMigration([
       url.pathname = '/new';
     },
   },
-]);
+];
+
+const migrate = createURLMigration(migrateRules);
 
 const fixtures = [
   { from: '/orders?status=late', to: '/orders?is_late=true' },
@@ -86,10 +88,23 @@ describe('checkMigrations', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('fails an example whose old URL was never valid', () => {
-    const result = run({ fixtures: [{ from: '/orders?status=bogus', to: '/orders' }, ...fixtures] });
+  it('accepts an older example whose old URL is no longer in the base contract', () => {
+    const chain = createURLMigration([
+      { type: 'rename-key', from: 'search', to: 'status' },
+      ...migrateRules,
+    ]);
+    const result = run({
+      migrate: chain,
+      fixtures: [{ from: '/orders?search=open', to: '/orders?status=open' }, ...fixtures],
+    });
+    expect(result.problems).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('does not let an example with an invalid old URL cover a break', () => {
+    const result = run({ fixtures: [{ from: '/orders?status=bogus', to: '/orders?status=bogus' }, fixtures[1]!] });
     expect(result.ok).toBe(false);
-    expect(result.problems.map((p) => p.message).join('\n')).toContain('not valid in the base contract');
+    expect(result.problems.map((p) => p.message).join('\n')).toContain('"late"');
   });
 
   it('fails a migration that does not settle: running it on its own output changes the URL again', () => {

@@ -49,7 +49,7 @@ export function checkMigrations(input: CheckInput): CheckResult {
   const problems: Problem[] = [];
 
   const verified = fixtures.filter((fixture) => {
-    const fixtureProblems = verifyFixture(fixture, base, head, migrate);
+    const fixtureProblems = verifyFixture(fixture, head, migrate);
     problems.push(...fixtureProblems);
     return fixtureProblems.length === 0;
   });
@@ -90,16 +90,16 @@ function sameURL(a: URL, b: URL): boolean {
   return normalize(a) === normalize(b);
 }
 
-function verifyFixture(fixture: Fixture, base: Contract, head: Contract, migrate: CheckInput['migrate']): Problem[] {
+/**
+ * An older example may start from an URL that the base contract no longer accepts, since that
+ * is what a past migration fixed. It must still migrate to the stated URL, which the head accepts.
+ */
+function verifyFixture(fixture: Fixture, head: Contract, migrate: CheckInput['migrate']): Problem[] {
   const label = `${fixture.from} -> ${fixture.to}`;
   const from = absolute(fixture.from);
   const to = absolute(fixture.to);
   const problems: Problem[] = [];
 
-  const before = validateURL(base, from);
-  if (before.route === null || before.issues.length) {
-    problems.push({ message: `example ${label}: the old URL is not valid in the base contract` });
-  }
   const after = validateURL(head, to);
   if (after.route === null || after.issues.length) {
     problems.push({ message: `example ${label}: the new URL is not valid in the head contract` });
@@ -115,11 +115,11 @@ function verifyFixture(fixture: Fixture, base: Contract, head: Contract, migrate
   return problems;
 }
 
-/** The old URL sits on the changed route and the new contract no longer accepts what it holds. */
+/** The old URL is valid in the base contract on the changed route, and the head contract no longer accepts it. */
 function exhibits(fixture: Fixture, change: Change, base: Contract, head: Contract): boolean {
   const from = absolute(fixture.from);
   const before = validateURL(base, from);
-  if (before.route !== change.route) return false;
+  if (before.route !== change.route || before.issues.length) return false;
   const after = validateURL(head, from);
   if (change.param === undefined) return after.route === null;
   return after.issues.some((issue) => issue.param === change.param);
