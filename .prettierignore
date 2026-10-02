@@ -1,0 +1,7 @@
+dist
+.next
+node_modules
+pnpm-lock.yaml
+url-contract.json
+packages/url-migrations/fixtures
+*.tsbuildinfo

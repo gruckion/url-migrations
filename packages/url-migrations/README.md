@@ -4,11 +4,13 @@ Turn old URLs into current ones with a list of small rules.
 
 Apps change. A filter gets renamed, a value is replaced, a status moves to a new flag. Users still have the old URL in a bookmark, an email, or a shared link. Run those URLs through `url-migrations` and redirect to the new shape, so old links keep working.
 
-Zero dependencies. It works on the standard `URL` object, so it runs in Node, edge runtimes, and the browser.
+The migration helper has no dependencies. It works on the standard `URL` object, so it runs in Node, edge runtimes, and the browser. The CLI needs `typescript` (any Next.js project already has it).
 
 ```sh
-pnpm add url-migrations
+npm install url-migrations
 ```
+
+Requires Node.js 18 or newer.
 
 ## Usage
 
@@ -61,12 +63,12 @@ export function middleware(request: NextRequest) {
 
 ## Rules
 
-| Type           | Does                                                                                          |
-| -------------- | --------------------------------------------------------------------------------------------- |
+| Type           | Does                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------- |
 | `rename-key`   | Moves every value from `from` to `to`. If `to` is already present, it wins and `from` is dropped. |
-| `remove-key`   | Deletes the key.                                                                              |
-| `update-value` | Maps each value of a key. Return `null` to drop a value.                                      |
-| `custom`       | Gets the `URLSearchParams` to change in place.                                                |
+| `remove-key`   | Deletes the key.                                                                                  |
+| `update-value` | Maps each value of a key. Return `null` to drop a value.                                          |
+| `custom`       | Gets the `URLSearchParams` to change in place.                                                    |
 
 Every rule accepts an optional `matches(url)`. The rule runs only when it returns true. Use it to scope a rule to a pathname.
 
@@ -158,7 +160,7 @@ In CI, commit each app's contract and compare it with the one on the target bran
 
 ```yaml
 - run: git show origin/${{ github.base_ref }}:url-contract.json > base-contract.json
-- run: npx url-migrations extract --check   # the committed contract is current
+- run: npx url-migrations extract --check # the committed contract is current
 - run: npx url-migrations check base-contract.json url-contract.json --migrations ./url-migrations.mjs
 ```
 
@@ -186,6 +188,10 @@ Path-only changes inside a route's own dynamic segments are not diffed beyond th
 ## Credit
 
 The rule shapes follow a design sketch by [François Best](https://x.com/fortysevenfx), author of [nuqs](https://nuqs.dev). See also the nuqs post [Beware the URL type safety iceberg](https://nuqs.dev/blog/beware-the-url-type-safety-iceberg). This is an independent implementation and is not part of nuqs.
+
+## Contributing
+
+Bug reports and pull requests are welcome. See [CONTRIBUTING.md](https://github.com/gruckion/url-migrations/blob/main/CONTRIBUTING.md).
 
 ## License
 

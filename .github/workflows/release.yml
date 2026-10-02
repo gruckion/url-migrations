@@ -1,0 +1,38 @@
+name: Release
+
+# Publishes the package to npm when you publish a GitHub release tagged v<version>.
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      - name: The tag matches the package version
+        run: |
+          version="$(node -p "require('./packages/url-migrations/package.json').version")"
+          if [ "v$version" != "${{ github.event.release.tag_name }}" ]; then
+            echo "Tag ${{ github.event.release.tag_name }} does not match package version v$version"
+            exit 1
+          fi
+
+      - name: Publish
+        run: pnpm --filter url-migrations publish --access public --provenance --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

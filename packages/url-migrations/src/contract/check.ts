@@ -110,7 +110,9 @@ function verifyFixture(fixture: Fixture, head: Contract, migrate: CheckInput['mi
     const got = `${migrated.url.pathname}${migrated.url.search}`;
     problems.push({ message: `example ${label}: the migration produced ${got}` });
   } else if (migrate(migrated.url).applied) {
-    problems.push({ message: `example ${label}: running the migration again changes the URL, so a redirect would loop` });
+    problems.push({
+      message: `example ${label}: running the migration again changes the URL, so a redirect would loop`,
+    });
   }
   return problems;
 }

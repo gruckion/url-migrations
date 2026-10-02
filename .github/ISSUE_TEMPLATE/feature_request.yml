@@ -1,0 +1,15 @@
+name: Feature request
+description: Suggest a change or a new URL pattern to support
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What URL change do you need to handle, or what breaks today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like
