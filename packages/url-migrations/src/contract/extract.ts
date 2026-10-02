@@ -72,8 +72,9 @@ export function extractContract(options: ExtractOptions): ExtractResult {
       sf,
       root,
       warn: (node, message) => {
-        const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
-        facts.warnings.push({ file: relative(sf.fileName), line: line + 1, message });
+        const own = node.getSourceFile();
+        const { line } = own.getLineAndCharacterOfPosition(node.getStart(own));
+        facts.warnings.push({ file: relative(own.fileName), line: line + 1, message });
       },
     };
     analyzeFile(ctx, facts, isPageFile(sf.fileName));
@@ -322,7 +323,7 @@ function readPageProps(
     for (const member of param.type.members) {
       if (!ts.isPropertySignature(member) || !member.type || memberName(member.name) !== 'searchParams') continue;
       let type: ts.TypeNode = member.type;
-      if (ts.isTypeReferenceNode(type) && type.typeName.getText(ctx.sf) === 'Promise' && type.typeArguments?.[0]) {
+      if (ts.isTypeReferenceNode(type) && type.typeName.getText() === 'Promise' && type.typeArguments?.[0]) {
         type = type.typeArguments[0];
       }
       if (!ts.isTypeLiteralNode(type)) {
@@ -418,14 +419,25 @@ function literalString(ctx: Ctx, expr: ts.Expression, depth = 0): string | null 
   return null;
 }
 
+/** The object literal an expression stands for, following variables across files. */
+function objectLiteralOf(ctx: Ctx, expr: ts.Expression, depth = 0): ts.ObjectLiteralExpression | null {
+  const e = unwrap(expr);
+  if (ts.isObjectLiteralExpression(e)) return e;
+  if (ts.isIdentifier(e) && depth < 6) {
+    const init = resolveInitializer(ctx, e);
+    return init ? objectLiteralOf(ctx, init, depth + 1) : null;
+  }
+  return null;
+}
+
 function readUrlKeys(ctx: Ctx, expr: ts.Expression): Map<string, string> {
   const map = new Map<string, string>();
-  const options = unwrap(expr);
-  if (!ts.isObjectLiteralExpression(options)) return map;
+  const options = objectLiteralOf(ctx, expr);
+  if (!options) return map;
   for (const prop of options.properties) {
     if (!ts.isPropertyAssignment(prop) || memberName(prop.name) !== 'urlKeys') continue;
-    const keys = unwrap(prop.initializer);
-    if (!ts.isObjectLiteralExpression(keys)) continue;
+    const keys = objectLiteralOf(ctx, prop.initializer);
+    if (!keys) continue;
     for (const entry of keys.properties) {
       if (!ts.isPropertyAssignment(entry)) continue;
       const from = memberName(entry.name);
@@ -566,7 +578,7 @@ function valueList(ctx: Ctx, expr: ts.Expression, depth = 0): string[] | null {
   if (
     ts.isCallExpression(e) &&
     ts.isPropertyAccessExpression(e.expression) &&
-    e.expression.expression.getText(ctx.sf) === 'Object' &&
+    e.expression.expression.getText() === 'Object' &&
     e.expression.name.text === 'values'
   ) {
     const [target] = e.arguments;

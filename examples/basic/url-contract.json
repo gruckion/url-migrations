@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "routes": {
+    "/": {
+      "params": {}
+    },
+    "/products": {
+      "params": {
+        "page": {
+          "kind": "integer"
+        },
+        "q": {
+          "kind": "string"
+        },
+        "sort": {
+          "kind": "enum",
+          "values": [
+            "name",
+            "price"
+          ]
+        }
+      }
+    }
+  }
+}

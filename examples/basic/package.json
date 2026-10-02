@@ -1,0 +1,26 @@
+{
+  "name": "example-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "contract": "node ../../packages/url-migrations/dist/cli.js extract --out url-contract.json",
+    "contract:check": "node ../../packages/url-migrations/dist/cli.js extract --out url-contract.json --check",
+    "gate": "node ../../packages/url-migrations/dist/cli.js check $BASE_CONTRACT url-contract.json --migrations ./url-migrations.mjs"
+  },
+  "dependencies": {
+    "next": "^16.3.8",
+    "nuqs": "^2.10.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "url-migrations": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^5.9.0"
+  }
+}

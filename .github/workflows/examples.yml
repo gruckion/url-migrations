@@ -1,0 +1,58 @@
+name: Examples
+
+# Runs the URL gate on every pull request that touches an example or the package.
+on:
+  pull_request:
+    paths:
+      - 'examples/**'
+      - 'packages/url-migrations/**'
+      - '.github/workflows/examples.yml'
+  push:
+    branches: [main]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [basic, kitchen-sink]
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - run: pnpm build
+        working-directory: .
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # The committed contract is what reviewers see in the pull request diff, so it must be current.
+      - name: Contract is up to date
+        run: pnpm contract:check
+
+      # Compare against the contract on the target branch.
+      - name: Breaking URL changes have a verified migration
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          path="examples/${{ matrix.example }}/url-contract.json"
+          if git cat-file -e "$BASE_REF:$path" 2>/dev/null; then
+            git show "$BASE_REF:$path" > "$RUNNER_TEMP/base-contract.json"
+            BASE_CONTRACT="$RUNNER_TEMP/base-contract.json" pnpm gate
+          else
+            echo "No contract on $BASE_REF yet, nothing to compare."
+          fi
