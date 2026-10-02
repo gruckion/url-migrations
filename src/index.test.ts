@@ -69,4 +69,21 @@ describe('createURLMigration', () => {
     expect(result.url.search).toBe('?sort=created_at&dir=desc');
     expect(migrate(result.url).applied).toBe(false);
   });
+
+  it('lets a custom rule rewrite the path as well', () => {
+    const migrate = createURLMigration([
+      {
+        type: 'custom',
+        matches: (url) => url.pathname === '/old',
+        action: (params, url) => {
+          url.pathname = '/new';
+          params.set('moved', '1');
+        },
+      },
+    ]);
+    const result = migrate(`${origin}/old?a=1`);
+    expect(result.url.pathname).toBe('/new');
+    expect(result.url.search).toBe('?a=1&moved=1');
+    expect(migrate(result.url).applied).toBe(false);
+  });
 });
