@@ -1,6 +1,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-import { diffContracts, extractContract, type Contract } from './contract';
+import { checkMigrations, diffContracts, extractContract, type Contract, type Fixture, type Waiver } from './contract';
+import type { MigrationResult } from './index';
 
 const USAGE = `url-migrations <command>
 
@@ -9,6 +12,11 @@ const USAGE = `url-migrations <command>
 
   diff <base.json> <head.json>
       Compare two contracts. Exits 1 when the change breaks existing URLs.
+
+  check <base.json> <head.json> --migrations <module.mjs>
+      Fail unless every breaking change has a verified old URL -> new URL example.
+      The module exports: migrate (from createURLMigration), fixtures [{ from, to }],
+      and optionally waivers [{ route, param?, reason }].
 `;
 
 function flags(args: string[]): Map<string, string> {
@@ -36,7 +44,22 @@ function isContract(value: unknown): value is Contract {
   return typeof value === 'object' && value !== null && 'version' in value && 'routes' in value;
 }
 
-function main(argv: string[]): number {
+interface MigrationsModule {
+  migrate: (input: string | URL) => MigrationResult;
+  fixtures: Fixture[];
+  waivers: Waiver[];
+}
+
+async function loadMigrations(file: string): Promise<MigrationsModule> {
+  const mod: Record<string, unknown> = await import(pathToFileURL(path.resolve(file)).href);
+  const { migrate, fixtures, waivers } = mod;
+  if (typeof migrate !== 'function') throw new Error(`${file} must export "migrate" (from createURLMigration)`);
+  if (!Array.isArray(fixtures)) throw new Error(`${file} must export "fixtures": [{ from, to }]`);
+  if (waivers !== undefined && !Array.isArray(waivers)) throw new Error(`${file} "waivers" must be an array`);
+  return { migrate: (input) => migrate(input), fixtures, waivers: waivers ?? [] };
+}
+
+async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv;
   if (command === 'extract') {
     const f = flags(rest);
@@ -61,8 +84,37 @@ function main(argv: string[]): number {
     if (!changes.length) console.log('no URL changes');
     return changes.some((c) => c.severity === 'breaking') ? 1 : 0;
   }
+  if (command === 'check') {
+    const [basePath, headPath, ...flagArgs] = rest;
+    const migrationsPath = flags(flagArgs).get('migrations');
+    if (!basePath || !headPath || !migrationsPath) {
+      console.error(USAGE);
+      return 2;
+    }
+    const migrations = await loadMigrations(migrationsPath);
+    const result = checkMigrations({
+      base: loadContract(basePath),
+      head: loadContract(headPath),
+      migrate: migrations.migrate,
+      fixtures: migrations.fixtures,
+      waivers: migrations.waivers,
+    });
+    for (const c of result.covered) console.log(`covered  ${c.route}${c.param ? ` ?${c.param}` : ''}  ${c.message}`);
+    for (const c of result.waived) console.log(`waived   ${c.route}${c.param ? ` ?${c.param}` : ''}  ${c.message}`);
+    for (const p of result.problems) console.log(`problem  ${p.message}`);
+    if (result.ok) console.log('ok');
+    return result.ok ? 0 : 1;
+  }
   console.error(USAGE);
   return command ? 2 : 0;
 }
 
-process.exitCode = main(process.argv.slice(2));
+main(process.argv.slice(2)).then(
+  (code) => {
+    process.exitCode = code;
+  },
+  (error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 2;
+  }
+);

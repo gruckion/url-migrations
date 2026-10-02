@@ -75,7 +75,7 @@ Every rule accepts an optional `matches(url)`. The rule runs only when it return
 - **Ordered.** Rules run top to bottom. List them oldest first, so one pass upgrades a URL that is several versions behind.
 - **No mutation.** The input is never changed. You get a new `URL` back, and the hash is kept.
 - **Idempotent, if you write it that way.** Running the migration on its own output should return `applied: false`. If it does not, a redirect can loop. Test this for each rule.
-- **Search params only.** Path changes are not migrated. Use your framework's redirect config for those, and use the contract diff to find out when you need one.
+- **Params first, path if you need it.** The built-in rules edit search params. A `custom` rule also receives the `URL`, so it can change `url.pathname` to move a route.
 
 ## Test your rules
 
@@ -108,6 +108,62 @@ safe     /orders ?is_late  param "is_late" was added
 
 The exit code is 1 when a change breaks existing URLs: a removed route, a removed or retyped param, or a removed enum value. New routes, params and values are safe. A removed param that matches a new param of the same type is reported as a likely rename.
 
+### Make forgetting a CI failure
+
+`check` fails unless every breaking change has a verified example: an old URL, the URL it must become, and proof that your migration does exactly that.
+
+```js
+// url-migrations.mjs
+import { createURLMigration } from 'url-migrations';
+
+export const migrate = createURLMigration([
+  {
+    type: 'custom',
+    matches: (url) => url.pathname === '/orders',
+    action: (params) => {
+      if (params.get('status') === 'late') {
+        params.delete('status');
+        params.set('is_late', 'true');
+      }
+    },
+  },
+]);
+
+export const fixtures = [{ from: '/orders?status=late', to: '/orders?is_late=true' }];
+
+// Optional. A break that needs no migration, with the reason.
+export const waivers = [{ route: '/retired-page', reason: 'feature removed, no inbound links' }];
+```
+
+```sh
+npx url-migrations check base-contract.json url-contract.json --migrations ./url-migrations.mjs
+```
+
+```text
+covered  /orders ?status  param "status" no longer accepts "late"
+ok
+```
+
+For each example, `check` verifies that:
+
+- the old URL is valid in the base contract
+- `migrate(old)` equals the new URL you wrote
+- the new URL is valid in the head contract
+- running `migrate` again on the new URL changes nothing, so a redirect cannot loop
+
+A migration that only deletes `status=late` would pass a validity check and lose the user's intent. That is why you write the expected result by hand.
+
+In CI, build the base contract from the target branch:
+
+```yaml
+- uses: actions/checkout@v4
+  with: { fetch-depth: 0 }
+- run: git worktree add ../base origin/${{ github.base_ref }}
+- run: npx url-migrations extract --root ../base --out base-contract.json
+- run: npx url-migrations extract --out url-contract.json
+- run: npx url-migrations check base-contract.json url-contract.json --migrations ./url-migrations.mjs
+```
+
 ### What it reads
 
 - [nuqs](https://nuqs.dev) hooks and schemas: `useQueryState`, `useQueryStates`, `createLoader`, `createSerializer`, `createSearchParamsCache`, including `urlKeys`, spread schemas, and enum values from const arrays, enums and `Object.values`.
@@ -125,7 +181,7 @@ The scan marks a route `opaque` and prints a warning when it finds URL state it 
 - hardcoded links that build query strings by hand
 - values inside a single param, such as a JSON filter tree
 
-Treat an `opaque` route as unchecked. The fix is to declare that state with a typed parser.
+Treat an `opaque` route as unchecked: `check` cannot tell you that a change there broke a URL. The fix is to declare that state with a typed parser.
 
 Path-only changes inside a route's own dynamic segments are not diffed beyond the route pattern.
 

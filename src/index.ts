@@ -2,7 +2,8 @@ export type MigrationAction =
   | { type: 'rename-key'; from: string; to: string }
   | { type: 'remove-key'; key: string }
   | { type: 'update-value'; key: string; action: (value: string) => string | null }
-  | { type: 'custom'; action: (params: URLSearchParams) => void };
+  /** Edit `params` in place. Change `url.pathname` to move the route as well. */
+  | { type: 'custom'; action: (params: URLSearchParams, url: URL) => void };
 
 export type URLMigration = MigrationAction & {
   /** Scope the rule to some URLs, for example by pathname. Omit to run on every URL. */
@@ -52,7 +53,7 @@ export function createURLMigration(migrations: readonly URLMigration[]) {
           break;
         }
         case 'custom':
-          migration.action(params);
+          migration.action(params, url);
           break;
       }
     }
