@@ -4,10 +4,14 @@
   "description": "Declarative URL migrations: turn old bookmarked URLs into current ones with ordered, idempotent rules.",
   "license": "MIT",
   "author": "Stephen Rayner",
+  "homepage": "https://github.com/gruckion/url-migrations#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gruckion/url-migrations.git",
     "directory": "packages/url-migrations"
+  },
+  "bugs": {
+    "url": "https://github.com/gruckion/url-migrations/issues"
   },
   "keywords": [
     "url",
@@ -20,6 +24,12 @@
   ],
   "type": "module",
   "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "url-migrations": "./dist/cli.js"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -53,15 +63,6 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "devDependencies": {
-    "@types/node": "^22.20.5",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.0",
-    "vitest": "^3.2.0"
-  },
-  "bin": {
-    "url-migrations": "./dist/cli.js"
-  },
   "peerDependencies": {
     "typescript": ">=5.0.0"
   },
@@ -69,5 +70,14 @@
     "typescript": {
       "optional": true
     }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
   }
 }

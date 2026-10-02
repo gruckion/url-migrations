@@ -1,0 +1,25 @@
+name: Bug report
+description: Something is wrong or the scanner misses URL state it should see
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you run, what did you expect, and what did you get?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Smallest example
+      description: For a scanner miss, paste the component or page that the scanner does not read correctly. A short file is best.
+      render: tsx
+  - type: input
+    id: version
+    attributes:
+      label: Version of url-migrations
+  - type: input
+    id: stack
+    attributes:
+      label: Next.js and nuqs versions

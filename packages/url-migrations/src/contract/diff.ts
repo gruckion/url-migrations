@@ -88,7 +88,12 @@ function diffMixed(route: string, param: string, before: ParamShape, after: Para
     changes.push(...diffShape(route, param, variant, match));
   }
   for (const variant of unmatchedAfter) {
-    changes.push({ severity: 'safe', route, param, message: `param "${param}" now also accepts ${describeShape(variant)}` });
+    changes.push({
+      severity: 'safe',
+      route,
+      param,
+      message: `param "${param}" now also accepts ${describeShape(variant)}`,
+    });
   }
   return changes;
 }

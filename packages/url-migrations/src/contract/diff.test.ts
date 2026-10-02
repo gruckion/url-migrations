@@ -15,7 +15,10 @@ const statusEnum = (...values: string[]): ParamShape => ({ kind: 'enum', values 
 
 describe('diffContracts', () => {
   it('treats additions as safe', () => {
-    const changes = diffContracts(contract({ '/a': { x: string } }), contract({ '/a': { x: string, y: string }, '/b': {} }));
+    const changes = diffContracts(
+      contract({ '/a': { x: string } }),
+      contract({ '/a': { x: string, y: string }, '/b': {} }),
+    );
     expect(changes.map((c) => c.severity)).toEqual(['safe', 'safe']);
   });
 
@@ -33,7 +36,7 @@ describe('diffContracts', () => {
   it('treats a removed enum value as breaking and an added one as safe', () => {
     const changes = diffContracts(
       contract({ '/a': { status: statusEnum('open', 'late') } }),
-      contract({ '/a': { status: statusEnum('open', 'void') } })
+      contract({ '/a': { status: statusEnum('open', 'void') } }),
     );
     expect(changes.find((c) => c.severity === 'breaking')?.message).toContain('"late"');
     expect(changes.find((c) => c.severity === 'safe')?.message).toContain('"void"');
@@ -58,7 +61,7 @@ describe('diffContracts', () => {
     const mixed = (...variants: ParamShape[]): ParamShape => ({ kind: 'mixed', variants });
     const changes = diffContracts(
       contract({ '/a': { status: mixed(list('OPEN', 'LATE'), statusEnum('FAILED')) } }),
-      contract({ '/a': { status: mixed(list('OPEN'), statusEnum('FAILED')) } })
+      contract({ '/a': { status: mixed(list('OPEN'), statusEnum('FAILED')) } }),
     );
     expect(changes).toHaveLength(1);
     expect(changes[0]).toMatchObject({ severity: 'breaking' });
@@ -68,7 +71,7 @@ describe('diffContracts', () => {
   it('treats a dropped variant of a mixed shape as breaking', () => {
     const changes = diffContracts(
       contract({ '/a': { v: { kind: 'mixed', variants: [string, { kind: 'integer' }] } } }),
-      contract({ '/a': { v: string } })
+      contract({ '/a': { v: string } }),
     );
     expect(changes.some((c) => c.severity === 'breaking')).toBe(true);
   });

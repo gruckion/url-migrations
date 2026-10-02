@@ -59,7 +59,7 @@ describe('diff and check', () => {
       migrations: write(
         'migrations.mjs',
         `export const migrate = (input) => { const url = new URL(input); const had = url.searchParams.has('q'); url.searchParams.delete('q'); return { applied: had, url }; };
-         export const fixtures = [{ from: '/a?q=x', to: '/a' }];`
+         export const fixtures = [{ from: '/a?q=x', to: '/a' }];`,
       ),
     };
   }
@@ -77,7 +77,10 @@ describe('diff and check', () => {
 
     const dir = scratch();
     const none = path.join(dir, 'none.mjs');
-    writeFileSync(none, 'export const migrate = (i) => ({ applied: false, url: new URL(i) }); export const fixtures = [];');
+    writeFileSync(
+      none,
+      'export const migrate = (i) => ({ applied: false, url: new URL(i) }); export const fixtures = [];',
+    );
     expect((await run(['check', base, head, '--migrations', none])).code).toBe(1);
   });
 

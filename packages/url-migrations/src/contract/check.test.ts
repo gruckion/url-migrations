@@ -89,10 +89,7 @@ describe('checkMigrations', () => {
   });
 
   it('accepts an older example whose old URL is no longer in the base contract', () => {
-    const chain = createURLMigration([
-      { type: 'rename-key', from: 'search', to: 'status' },
-      ...migrateRules,
-    ]);
+    const chain = createURLMigration([{ type: 'rename-key', from: 'search', to: 'status' }, ...migrateRules]);
     const result = run({
       migrate: chain,
       fixtures: [{ from: '/orders?search=open', to: '/orders?status=open' }, ...fixtures],

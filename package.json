@@ -7,6 +7,11 @@
     "build": "pnpm --filter url-migrations build",
     "test": "pnpm --filter url-migrations test",
     "typecheck": "pnpm -r typecheck",
-    "contract": "pnpm --filter './examples/*' contract"
+    "contract": "pnpm --filter './examples/*' contract",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
   }
 }

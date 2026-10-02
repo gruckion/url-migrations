@@ -184,7 +184,12 @@ export function extractContract(options: ExtractOptions): ExtractResult {
     sortedRoutes[route] = entry.opaque ? { params, opaque: true } : { params };
   }
   const contract: Contract = { version: 1, routes: sortedRoutes };
-  return { contract, warnings, origins, stats: { pages: Object.keys(sortedRoutes).length, filesScanned: visited.size } };
+  return {
+    contract,
+    warnings,
+    origins,
+    stats: { pages: Object.keys(sortedRoutes).length, filesScanned: visited.size },
+  };
 }
 
 /** `export default function Page` and `export default Page;`. */
@@ -313,7 +318,7 @@ function isUseSearchParamsCall(ctx: Ctx, expr: ts.Expression): boolean {
 function readPageProps(
   ctx: Ctx,
   facts: FileFacts,
-  add: (node: ts.Node, key: string | null, shape: ParamShape) => void
+  add: (node: ts.Node, key: string | null, shape: ParamShape) => void,
 ) {
   for (const statement of ctx.sf.statements) {
     if (!ts.isFunctionDeclaration(statement)) continue;
@@ -452,7 +457,7 @@ function schemaEntries(
   ctx: Ctx,
   expr: ts.Expression,
   at: ts.Node,
-  depth = 0
+  depth = 0,
 ): Array<{ key: string | null; shape: ParamShape }> {
   const e = unwrap(expr);
   if (depth > 6) return [];
