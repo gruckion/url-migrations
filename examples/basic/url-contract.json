@@ -16,7 +16,7 @@
           "kind": "enum",
           "values": [
             "name",
-            "price"
+            "price_asc"
           ]
         }
       }

@@ -2,7 +2,7 @@
 
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs';
 
-const SORTS = ['name', 'price'] as const;
+const SORTS = ['name', 'price_asc'] as const;
 
 export function ProductList() {
   const [{ q, sort, page }, setQuery] = useQueryStates({
@@ -14,7 +14,7 @@ export function ProductList() {
   return (
     <div>
       <input value={q} onChange={(event) => setQuery({ q: event.target.value, page: 1 })} />
-      <select value={sort} onChange={(event) => setQuery({ sort: event.target.value === 'price' ? 'price' : 'name' })}>
+      <select value={sort} onChange={(event) => setQuery({ sort: event.target.value === 'price_asc' ? 'price_asc' : 'name' })}>
         {SORTS.map((value) => (
           <option key={value}>{value}</option>
         ))}
